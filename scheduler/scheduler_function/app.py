@@ -1,7 +1,6 @@
 import json
 import logging
 import requests
-import time
 
 # Set up logging
 logger = logging.getLogger()
@@ -42,20 +41,14 @@ def lambda_handler(event, context):
         # We just need to send the request successfully, not wait for a full response
         response = requests.post(api_url, json=payload, headers=headers, timeout=5)
         
-        # If we get here without an exception, consider it a success regardless of status code
-        # as endpoint is expected to timeout even though it processes the request
+        # If we get here without an exception, consider it a success
         logger.info(f"API request sent successfully. Status code: {response.status_code}")
-        
-        # Wait for 5 seconds to let the endpoint start processing
-        logger.info("Waiting 5 seconds...")
-        time.sleep(5)
-        logger.info("Wait completed. Assuming task is now running in the background.")
         
         return {
             "statusCode": 200,
             "body": json.dumps({
                 "message": "Scheduler function executed successfully",
-                "info": "Request sent to API, assumed to be processing in the background",
+                "info": "Request sent to API",
                 "timestamp": event.get("time", "unknown")
             }),
         }
