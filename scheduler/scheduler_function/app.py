@@ -28,7 +28,7 @@ def lambda_handler(event, context):
     
     # Request payload
     payload = {
-        "task_name": "Send Order Report"
+        "task_name": "Run Shipstation"
     }
     
     # Headers
