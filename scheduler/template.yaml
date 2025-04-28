@@ -26,7 +26,7 @@ Resources:
         DailyTrigger:
           Type: ScheduleV2                 # SAM wrapper for AWS::Scheduler::Schedule
           Properties:
-            ScheduleExpression: "cron(0 6 * * ? *)"          # 6:00 every day
+            ScheduleExpression: "cron(0 6 ? * MON-FRI *)"          # 6:00 weekdays only
             ScheduleExpressionTimezone: "America/New_York"   # evaluate in Eastern Time
             FlexibleTimeWindow:
               Mode: "OFF"                                   # fire exactly at 6:00
