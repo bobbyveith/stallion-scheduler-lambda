@@ -1,56 +1,40 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  scheduler
+  Daily 6 a.m. Eastern scheduler
+  --------------------------------
+  A Lambda function that runs every day at 6 a.m. America/New_York
+  (EventBridge Scheduler handles daylight-saving time automatically).
 
-  Lambda function that runs on a schedule using EventBridge
-
-# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
     Timeout: 60
-
-    # You can add LoggingConfig parameters such as the Logformat, Log Group, and SystemLogLevel or ApplicationLogLevel. Learn more here https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-function.html#sam-function-loggingconfig.
     LoggingConfig:
-      LogFormat: JSON
+      LogFormat: JSON          # structured logs in CloudWatch
+
 Resources:
   SchedulerFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Type: AWS::Serverless::Function
     Properties:
-      CodeUri: scheduler_function/
+      CodeUri: scheduler_function/      # your source folder
       Handler: app.lambda_handler
       Runtime: python3.11
-      Architectures:
-      - x86_64
+      Architectures: [x86_64]
 
-  # Define EventBridge rule directly with timezone support
-  SchedulerRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Name: DailySchedulerTrigger
-      Description: Trigger function at 6am Eastern Time (adjusts for DST)
-      # Note: After deployment, use the AWS CLI to set the timezone:
-      # aws events put-rule --name DailySchedulerTrigger --schedule-expression "cron(0 6 * * ? *)" --schedule-expression-timezone "America/New_York"
-      ScheduleExpression: cron(0 6 * * ? *)
-      State: ENABLED
-      Targets:
-        - Id: TargetFunction
-          Arn: !GetAtt SchedulerFunction.Arn
-      EventBusName: default
-  
-  # Permission for EventBridge to invoke Lambda
-  PermissionForEventsToInvokeLambda:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref SchedulerFunction
-      Action: lambda:InvokeFunction
-      Principal: events.amazonaws.com
-      SourceArn: !GetAtt SchedulerRule.Arn
+      # ── EventBridge Scheduler trigger ────────────────────────────────────────
+      Events:
+        DailyTrigger:
+          Type: ScheduleV2                 # SAM wrapper for AWS::Scheduler::Schedule
+          Properties:
+            ScheduleExpression: "cron(0 6 * * ? *)"          # 6:00 every day
+            ScheduleExpressionTimezone: "America/New_York"   # evaluate in Eastern Time
+            FlexibleTimeWindow:
+              Mode: "OFF"                                   # fire exactly at 6:00
 
 Outputs:
-  SchedulerFunction:
+  LambdaArn:
     Description: Scheduler Lambda Function ARN
     Value: !GetAtt SchedulerFunction.Arn
-  SchedulerFunctionIamRole:
-    Description: Implicit IAM Role created for Scheduler function
-    Value: !GetAtt SchedulerFunctionRole.Arn
+  FunctionName:
+    Description: Lambda function name
+    Value: !Ref SchedulerFunction
