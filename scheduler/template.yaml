@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  scheduler
+
+  Lambda function that runs on a schedule using EventBridge
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 3
+
+    # You can add LoggingConfig parameters such as the Logformat, Log Group, and SystemLogLevel or ApplicationLogLevel. Learn more here https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-function.html#sam-function-loggingconfig.
+    LoggingConfig:
+      LogFormat: JSON
+Resources:
+  SchedulerFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: scheduler_function/
+      Handler: app.lambda_handler
+      Runtime: python3.11
+      Architectures:
+      - x86_64
+
+  # Define EventBridge rule directly with timezone support
+  SchedulerRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: DailySchedulerTrigger
+      Description: Trigger function at 6am Eastern Time (adjusts for DST)
+      # Note: After deployment, use the AWS CLI to set the timezone:
+      # aws events put-rule --name DailySchedulerTrigger --schedule-expression "cron(0 6 * * ? *)" --schedule-expression-timezone "America/New_York"
+      ScheduleExpression: cron(0 6 * * ? *)
+      State: ENABLED
+      Targets:
+        - Id: TargetFunction
+          Arn: !GetAtt SchedulerFunction.Arn
+      EventBusName: default
+  
+  # Permission for EventBridge to invoke Lambda
+  PermissionForEventsToInvokeLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SchedulerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt SchedulerRule.Arn
+
+Outputs:
+  SchedulerFunction:
+    Description: Scheduler Lambda Function ARN
+    Value: !GetAtt SchedulerFunction.Arn
+  SchedulerFunctionIamRole:
+    Description: Implicit IAM Role created for Scheduler function
+    Value: !GetAtt SchedulerFunctionRole.Arn
